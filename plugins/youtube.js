@@ -23,7 +23,7 @@ const {
   searchSong
 } = require('./misc/misc');
 const {
-    downloadYT, dlSong
+    ytTitle,downloadYT, dlSong, ytv, getResolutions
   } = require('./misc/yt');
 const Lang = getString('scrapers');
 const {
@@ -44,7 +44,7 @@ Module({
 }, (async (message, match) => {
 if (!match[1]) return message.sendReply("_Need song name, eg: .play starboy_")
 let sr = (await searchYT(match[1])).videos[0];
-  var {title} = await downloadYT(sr.id);
+  const title = await ytTitle(sr.id)
   await message.sendReply(`*Downloading:* _${title}_`)
   let sdl = await dlSong(sr.id);
   ffmpeg(sdl)
@@ -60,6 +60,45 @@ let sr = (await searchYT(match[1])).videos[0];
 });
 }));
 Module({
+  pattern: 'ytv ?(.*)',
+  fromMe: fm,
+  desc: Lang.YTV_DESC,
+  use: 'download'
+}, (async (message, match) => {
+  if (!match[1]) return message.sendReply("_Need YouTube video link!_")
+  if (match[1].startsWith('dl;')){
+    const link = match[1].split(';')[2]
+    const res_ = match[1].split(';')[1]
+    const result__ = await ytv(link,res_)
+    const title = await ytTitle(link)
+    return await message.client.sendMessage(message.jid,{video:result__,caption:`_${title} *[${res_}]*_`},{quoted:message.data}) 
+  }
+  var link = match[1].match(/\bhttps?:\/\/\S+/gi)
+  if (link !== null && getID.test(link[0])) {
+  link = link[0].match(getID)[1]
+  var rows = []
+  const result_ = await getResolutions(link)
+  for (var i of result_){
+    rows.push({
+      title:i.fps60?i.quality+' 60fps':i.quality,
+      description:i.size,
+      rowId: handler+"ytv dl;"+(i.fps60?i.quality+'60':i.quality)+';'+link
+  })
+  }
+  const sections = [{
+      title:'Select a resolution',
+      rows:rows
+  }];
+  const listMessage = {
+      text: " ",
+      title: "Select a quality",
+      buttonText: "View all",
+      sections
+  }
+ return await message.client.sendMessage(message.jid, listMessage,{quoted: message.data})
+}
+}));
+Module({
   pattern: 'song ?(.*)',
   fromMe: fm,
   desc: Lang.SONG_DESC,
@@ -69,7 +108,7 @@ Module({
   var link = match[1].match(/\bhttps?:\/\/\S+/gi)
   if (link !== null && getID.test(link[0])) {
   let v_id = link[0].match(getID)[1]
-  var {title} = await downloadYT(v_id);
+  const title = await ytTitle(v_id);
   await message.sendReply(`*Downloading:* _${title}_`)
   let sdl = await dlSong(v_id);
   ffmpeg(sdl)
@@ -112,6 +151,7 @@ Module({
  return await message.client.sendMessage(message.jid, listMessage,{quoted: message.data})
 }
 }));
+
 Module({
   pattern: 'yts ?(.*)',
   fromMe: fm,

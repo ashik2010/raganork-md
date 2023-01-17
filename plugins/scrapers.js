@@ -12,8 +12,6 @@ const {
     getString
 } = require('./misc/lang');
 const {
-    sendYtQualityList,
-    processYtv,
     getJson,
     gtts
 } = require('./misc/misc');
@@ -37,7 +35,7 @@ const {
     skbuffer
 } = require('raganork-bot');
 const LanguageDetect = require('languagedetect');
-const { downloadYT } = require('./misc/yt');
+const { downloadYT,ytv,ytTitle } = require('./misc/yt');
 const lngDetector = new LanguageDetect();
 async function extractGoogleImage(url){
 var result = (await axios(url)).data
@@ -71,6 +69,9 @@ Module({
 }, async (message, match) => {
     var query = match[1] || message.reply_message.text
     if (!query) return await message.sendReply(Lang.TTS_NEED_REPLY);
+    if (!fs.existsSync("./temp/tts")) {
+        fs.mkdirSync("./temp/tts")
+    }
     query = query.replace("tts","")
     var lng = 'en';
     if (/[^\x00-\x7F]+/.test(query)) lng = 'ml';
@@ -100,20 +101,6 @@ Module({
         quoted: message.data
     });
 });
-Module({
-    pattern: 'ytv ?(.*)',
-    fromMe: w,
-    desc: Lang.YTV_DESC,
-    use: 'download'
-}, (async (message, match) => {
-    await sendYtQualityList(message, match);
-}));
-Module({
-    on: 'button',
-    fromMe: w
-}, (async (message, match) => {
-    await processYtv(message);
-}));
 Module({
     pattern: 'img ?(.*)',
     fromMe: w,
@@ -227,19 +214,14 @@ Module({
     if (!s1) return await message.sendReply("*"+Lang.NEED_VIDEO+"*");
     if (!s1.includes('youtu')) return await message.sendReply("*"+Lang.NEED_VIDEO+"*");
     const getID = /(?:http(?:s|):\/\/|)(?:(?:www\.|)youtube(?:\-nocookie|)\.com\/(?:watch\?.*(?:|\&)v=|embed|shorts\/|v\/)|youtu\.be\/)([-_0-9A-Za-z]{11})/
-    var qq = getID.exec(s1)
-        var {
-            url,
-            thumbnail,
-            title
-        } = await downloadYT(qq[1]);
-        return await message.client.sendMessage(message.jid, {
-            video: {
-                url: url
-            },
+    var vid = getID.exec(s1)[1]
+    const video = await ytv(vid)
+    const caption = await ytTitle(vid)    
+    return await message.client.sendMessage(message.jid, {
+            video,
             mimetype: "video/mp4",
-            caption: title,
-            thumbnail: await skbuffer(thumbnail)
+            caption,
+            thumbnail: await skbuffer(`https://i.ytimg.com/vi/${vid}/maxresdefault.jpg`)
         },{quoted:message.data});
     });
 Module({
