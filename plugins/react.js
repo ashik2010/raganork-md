@@ -9,7 +9,7 @@ const {
 Module({
     pattern: 'react ?(.*)',
     fromMe: true,
-    use: 'utility'
+    use: 'whatsapp'
 }, (async (m, t) => {
     let msg = {
         remoteJid: m.reply_message.jid,
@@ -23,6 +23,24 @@ Module({
     }
 
     await m.client.sendMessage(m.jid, reactionMessage);
+}));
+Module({
+    pattern: 'edit ?(.*)',
+    fromMe: true,
+    use: 'whatsapp'
+}, (async (m, t) => {
+    if (t[1] && m.reply_message?.text && m.quoted.key.fromMe){
+    await m.edit(t[1],m.jid,m.quoted.key);
+}
+}));
+Module({
+    pattern: 'retry ?(.*)',
+    fromMe: false,
+    desc: 'Retries replied command to run the command again',
+    use: 'misc'
+}, (async (m, t) => {
+    if (!m.reply_message) return await m.sendReply('_Reply to a command message_')
+    await m.client.ev.emit('messages.upsert',{messages: [m.quoted],type: 'notify'})
 }));
 Module({
     pattern: 'vv ?(.*)',
